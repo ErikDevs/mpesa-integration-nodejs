@@ -82,9 +82,7 @@ app.post("/mpesa/stkpush", async (req, res) => {
 });
 
 // Callback Route to Receive M-Pesa Response
-app.post("mpesa/callback", (req, res) => {
-  console.log("📥 M-Pesa Callback Received:", req.body);
-
+app.post("/callback", (req, res) => {
   // Ensure we have valid data
   if (!req.body.Body || !req.body.Body.stkCallback) {
     return res.status(400).json({ error: "Invalid callback data" });
@@ -110,7 +108,7 @@ app.post("mpesa/callback", (req, res) => {
       ).Value,
     };
   } else {
-    console.log("❌ Payment Failed:", callbackData.ResultDesc);
+    console.log("Payment Failed:", callbackData.ResultDesc);
 
     // Save failed transaction
     transactions[checkoutRequestID] = {
@@ -123,4 +121,4 @@ app.post("mpesa/callback", (req, res) => {
 });
 
 // Start Server
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
