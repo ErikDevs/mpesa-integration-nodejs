@@ -82,7 +82,7 @@ app.post("/mpesa/stkpush", async (req, res) => {
 });
 
 // Callback Route to Receive M-Pesa Response
-app.post("callback", (req, res) => {
+app.post("mpesa/callback", (req, res) => {
   console.log("📥 M-Pesa Callback Received:", req.body);
 
   // Ensure we have valid data
