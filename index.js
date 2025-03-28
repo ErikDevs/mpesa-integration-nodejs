@@ -40,7 +40,6 @@ const getAccessToken = async () => {
 app.post("/mpesa/stkpush", async (req, res) => {
   try {
     const accessToken = await getAccessToken();
-
     const timestamp = moment().format("YYYYMMDDHHmmss");
     const password = Buffer.from(
       `${process.env.MPESA_SHORTCODE}${process.env.MPESA_PASSKEY}${timestamp}`
@@ -75,45 +74,35 @@ app.post("/mpesa/stkpush", async (req, res) => {
   }
 });
 
-// Webhook to Handle M-Pesa Callback
 app.post("/mpesa/callback", (req, res) => {
-  console.log("M-Pesa Callback:", req.body);
-  res.status(200).send("Callback received");
-});
-
-app.post("/mpesa/callback", (req, res) => {
-  console.log("M-Pesa Callback Response:", JSON.stringify(req.body, null, 2));
+  console.log("📥 M-Pesa Callback Received:", req.body);
 
   const callbackData = req.body.Body.stkCallback;
 
   if (!callbackData) {
-    console.error("⚠️ No callback data received!");
-    return res.status(400).send("No callback data received");
+    return res.status(400).json({ error: "Invalid callback data" });
   }
 
+  // Check if the transaction was successful
   if (callbackData.ResultCode === 0) {
-    // ✅ Payment was successful
-    console.log("✅ Payment Successful");
+    // Extract important details
+    const amount = callbackData.CallbackMetadata.Item.find(
+      (item) => item.Name === "Amount"
+    )?.Value;
+    const receipt = callbackData.CallbackMetadata.Item.find(
+      (item) => item.Name === "MpesaReceiptNumber"
+    )?.Value;
+    const phone = callbackData.CallbackMetadata.Item.find(
+      (item) => item.Name === "PhoneNumber"
+    )?.Value;
+
     console.log(
-      "Amount:",
-      callbackData.CallbackMetadata.Item.find((item) => item.Name === "Amount")
-        ?.Value
+      `✅ Payment Successful! Amount: ${amount}, Receipt: ${receipt}, Phone: ${phone}`
     );
-    console.log(
-      "MpesaReceiptNumber:",
-      callbackData.CallbackMetadata.Item.find(
-        (item) => item.Name === "MpesaReceiptNumber"
-      )?.Value
-    );
-    console.log(
-      "Phone Number:",
-      callbackData.CallbackMetadata.Item.find(
-        (item) => item.Name === "PhoneNumber"
-      )?.Value
-    );
+
+    // Store transaction details in your database here
   } else {
-    // ❌ Payment failed
-    console.log("Payment Failed:", callbackData.ResultDesc);
+    console.log(`❌ Payment Failed: ${callbackData.ResultDesc}`);
   }
 
   res.status(200).send("Callback received");
