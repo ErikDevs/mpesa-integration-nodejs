@@ -83,41 +83,52 @@ app.post("/mpesa/stkpush", async (req, res) => {
 
 // Callback Route to Receive M-Pesa Response
 app.post("/callback", (req, res) => {
-  // Ensure we have valid data
-  if (!req.body.Body || !req.body.Body.stkCallback) {
-    return res.status(400).json({ error: "Invalid callback data" });
+  console.log("M-Pesa Callback Received:", JSON.stringify(req.body, null, 2));
+
+  const callbackData = req.body;
+
+  if (!callbackData.Body || !callbackData.Body.stkCallback) {
+    console.error("Invalid Callback Data:", callbackData);
+    return res.status(400).json({ error: "Invalid callback data received" });
   }
 
-  const callbackData = req.body.Body.stkCallback;
-  const checkoutRequestID = callbackData.CheckoutRequestID;
+  const {
+    MerchantRequestID,
+    CheckoutRequestID,
+    ResultCode,
+    ResultDesc,
+    CallbackMetadata,
+  } = callbackData.Body.stkCallback;
 
-  if (callbackData.ResultCode === 0) {
-    console.log("✅ Payment Successful:", callbackData.CallbackMetadata);
+  if (ResultCode === 0) {
+    // Successful Transaction
+    const metadata = CallbackMetadata?.Item || [];
+    const mpesaReceipt =
+      metadata.find((item) => item.Name === "MpesaReceiptNumber")?.Value ||
+      "N/A";
+    const amount =
+      metadata.find((item) => item.Name === "Amount")?.Value || "N/A";
+    const phoneNumber =
+      metadata.find((item) => item.Name === "PhoneNumber")?.Value || "N/A";
+    const transactionDate =
+      metadata.find((item) => item.Name === "TransactionDate")?.Value || "N/A";
 
-    // Save transaction to database (optional)
-    transactions[checkoutRequestID] = {
-      status: "Success",
-      amount: callbackData.CallbackMetadata.Item.find(
-        (i) => i.Name === "Amount"
-      ).Value,
-      receipt: callbackData.CallbackMetadata.Item.find(
-        (i) => i.Name === "MpesaReceiptNumber"
-      ).Value,
-      phone: callbackData.CallbackMetadata.Item.find(
-        (i) => i.Name === "PhoneNumber"
-      ).Value,
-    };
+    console.log("Payment Successful:");
+    console.log("MerchantRequestID:", MerchantRequestID);
+    console.log("CheckoutRequestID:", CheckoutRequestID);
+    console.log("M-Pesa Receipt Number:", mpesaReceipt);
+    console.log("Amount:", amount);
+    console.log("Phone Number:", phoneNumber);
+    console.log("Transaction Date:", transactionDate);
+
+    // TODO: Store this data in a database
   } else {
-    console.log("Payment Failed:", callbackData.ResultDesc);
-
-    // Save failed transaction
-    transactions[checkoutRequestID] = {
-      status: "Failed",
-      error: callbackData.ResultDesc,
-    };
+    // Failed Transaction
+    console.error("Payment Failed:", ResultDesc);
   }
 
-  res.status(200).send("Callback received");
+  // Send success response to Safaricom (must return 200 OK)
+  res.status(200).json({ message: "Callback received" });
 });
 
 // Start Server
